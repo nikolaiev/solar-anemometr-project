@@ -3,11 +3,14 @@
 #include "LiquidCrystal_I2C.h"
 #include "LowPower.h"
 #include <avr/wdt.h>
+#include "LcdService.h"
 
 RTC_DS3231 rtc;
 SolarPosition sun (48.454642, 36.419804);  // Petropavlovka, Ukraine
 const int DISPLAY_SYMBOLS = 20;
 LiquidCrystal_I2C lcd (0x3f, DISPLAY_SYMBOLS, 4); //20 4 lcd display
+
+LcdService* lcdService;
 
 const long SECONDS_TO_WAIT_WIND_CALM = 150L;// 10 mins; //300 secs 5 mins
 const long MILLIS_TRACKER_TO_PROTECT_MODE = 300000L;//300000L; //300 secs 5 mins
@@ -42,29 +45,23 @@ void setup() {
   pinMode(POWER_CONTROLE_PIN_1, OUTPUT);
   pinMode(POWER_CONTROLE_PIN_2, OUTPUT);
   turnTrackersOn();
-  initLcd();
+  lcdService = new LcdService(&lcd);
   initRtc();
   initSolarPosition();
 }
 
-void initLcd() {
-  lcd.init();                      // Инициализация дисплея
-  lcd.backlight();
-  lcdPrint("Starting wind monitoring...");
-}
-
 void initRtc() {
   if (!rtc.begin()) {
-    lcdPrint("ERROR! Cannot find RTC");
+    lcdService->print("ERROR! Cannot find RTC");
     goToProtectMode();
-    lcdPrint("ERROR! Cannot find RTC");
+    lcdService->print("ERROR! Cannot find RTC");
     abort();
   }
 
   if (rtc.lostPower()) {
-    lcdPrint("ERROR! RTC lost power");
+    lcdService->print("ERROR! RTC lost power");
     goToProtectMode();
-    lcdPrint("ERROR! RTC lost power");
+    lcdService->print("ERROR! RTC lost power");
     abort();
   }
 }
@@ -89,7 +86,7 @@ void loop() {
   if(!isGridProtectModeOn){ // do not care about wind if grid is out
     windSpeedProtection();
   }
-  lcdPrintMonitoring();
+  lcdService->printMonitoring(false, isGridProtectModeOn, isWindProtectModeOn, anemVoltage, VOLT_TO_METER_PER_SEC, getWindHighSpeedDuration(), MINUTES_SUN_POSITION_INTERVAL_CHECK, sun.getSolarAzimuth(), sun.getSolarElevation(), rtc.now());
   delay(250);
 }
 
@@ -101,7 +98,7 @@ void sleepIfNight(){
     bool isSleeping = true;
     //sleeping loop
     do{
-      lcdPrintMonitoring(isSleeping);
+      lcdService->printMonitoring(isSleeping, isGridProtectModeOn, isWindProtectModeOn, anemVoltage, VOLT_TO_METER_PER_SEC, getWindHighSpeedDuration(), MINUTES_SUN_POSITION_INTERVAL_CHECK, sun.getSolarAzimuth(), sun.getSolarElevation(), rtc.now());
       sleepMinutesPowerSave(MINUTES_SUN_POSITION_INTERVAL_CHECK); //3 mins to sleep
       sunElevation = sun.getSolarElevation();
     } while(sunElevation <= SUN_SLEEP_ELEVATION);
@@ -159,24 +156,24 @@ void windSpeedProtection(){
 
 void goToProtectMode() {
   Serial.println("Go to protect mode");
-  lcdPrintNoDelay("Go to protect mode");
+  lcdService->printNoDelay("Go to protect mode");
   turnTrackersOff();
   delay(10000); //10 sec wait till power blocks for trackers turn off completelly
 
   turnTrackersOn();
   Serial.println("Wait trackers to get a protect position");
-  lcdPrintNoDelay("Wait trackers to get a protect position");
+  lcdService->printNoDelay("Wait trackers to get a protect position");
   delay(MILLIS_TRACKER_TO_PROTECT_MODE); //300 sec //5 mins to get the waiting position
 
   turnTrackersOff();
   Serial.print("Waiting for the better weather");
-  lcdPrint("Waiting for the better weather");
+  lcdService->print("Waiting for the better weather");
 }
 
 void goToNormalMode(){
   turnTrackersOn();
   Serial.println("Go to normal mode");
-  lcdPrint ("Go to normal mode");  
+  lcdService->print("Go to normal mode");
 }
 
 void turnTrackersOn(){
@@ -203,70 +200,3 @@ long getWindHighSpeedDuration(){
   return getUnixtimeFromRtc() - lastTimeWindHighSpeed;
 }
 
-void lcdPrintNoDelay(String message) {
-  lcd.clear();
-  
-  lcd.setCursor(0, 0);
-  lcd.print(message);
-  delay(3000);
-}
-
-void lcdPrint(String message) {
-  lcd.clear();
-  
-  lcd.setCursor(0, 0);
-  lcd.print(message);
-}
-
-void lcdPrintMonitoring(){
-  lcdPrintMonitoring(false);
-}
-
-void lcdPrintMonitoring(bool isSleeping){
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  if(isGridProtectModeOn){
-    lcd.print("Grid protection mode");
-  } else{
-    if(!isSleeping){
-      lcd.print("Wind speed: ");
-      lcd.print(anemVoltage / VOLT_TO_METER_PER_SEC);
-      lcd.print(" m/s ");
-      lcd.setCursor(0, 1);
-      lcd.print("Anem signal: ");
-      lcd.print(anemVoltage);
-      lcd.print(" v");
-    } else{ //we do not read anemometr value while sleep
-      lcd.print("Waiting sunrise for ");
-      lcd.setCursor(0, 1);
-      lcd.print(MINUTES_SUN_POSITION_INTERVAL_CHECK);
-      lcd.print(" min");
-    }
-    if(isWindProtectModeOn){
-      lcd.setCursor(0, 1);
-      lcd.print("Wind protection mode");
-      lcd.setCursor(0, 2);
-      lcd.print("Time (sec):");
-      lcd.setCursor(0, 3);
-      lcd.print(getWindHighSpeedDuration());
-    }else{
-      lcd.setCursor(0, 2);
-      lcd.print("az: ");
-      lcd.print(sun.getSolarAzimuth());
-      lcd.print(" e: ");
-      lcd.print(sun.getSolarElevation());
-      
-      DateTime now = rtc.now();
-      lcd.setCursor(0, 3);
-      //lcd.print("time: ");
-      char bufTime[] = "hh:mm:ss";
-      lcd.print(now.toString(bufTime));
-      
-      //lcd.setCursor(0, 2);
-      //lcd.print("date: ");
-      lcd.print("  ");
-      char bufDate[] = "DD/MM/YY";
-      lcd.print(now.toString(bufDate));        
-    }
-  }
-}
