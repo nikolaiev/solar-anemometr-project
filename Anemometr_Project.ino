@@ -1,32 +1,16 @@
- #include <RTClib.h>
+#include <RTClib.h>
 #include "SolarPosition.h"
 #include "LiquidCrystal_I2C.h"
 #include "LowPower.h"
 #include <avr/wdt.h>
+#include "ApplicationProperties.h"
 #include "LcdService.h"
 
 RTC_DS3231 rtc;
-SolarPosition sun (48.454642, 36.419804);  // Petropavlovka, Ukraine
-const int DISPLAY_SYMBOLS = 20;
-LiquidCrystal_I2C lcd (0x3f, DISPLAY_SYMBOLS, 4); //20 4 lcd display
+SolarPosition sun (LATITUDE, LONGITUDE);
+LiquidCrystal_I2C lcd (DISPLAY_I2C_ADDR, DISPLAY_COLS, DISPLAY_ROWS);
 
 LcdService* lcdService;
-
-const long SECONDS_TO_WAIT_WIND_CALM = 150L;// 10 mins; //300 secs 5 mins
-const long MILLIS_TRACKER_TO_PROTECT_MODE = 300000L;//300000L; //300 secs 5 mins
-const int MINUTES_SUN_POSITION_INTERVAL_CHECK = 3;//180 secs 3 mins
-const double SUN_SLEEP_ELEVATION = -1.0;
-
-const int ANEMOMETR_SIGNAL_PIN = A7; //сигнал от анемометра
-const int GRID_STATE_SIGNAL_PIN = A3; //сигнал от датчика наличия сети
-const int POWER_CONTROLE_PIN_1 = A1; //контрольный пин питания трекерной розетки
-const int POWER_CONTROLE_PIN_2 = A2; //контрольный пин питания трекерной розетки
-
-const double TO_ANEM_VOLTAGE = 5. / 1023.; //analogRead() returns value from 0 to 1023
-
-const float VOLT_TO_METER_PER_SEC = 5./30.; //0.166666666666..
-const float ANEM_VOLTAGE_HIGH = VOLT_TO_METER_PER_SEC * 5; //high wind speed 5 m/s
-const float ANEM_VOLTAGE_MAX = VOLT_TO_METER_PER_SEC * 6; //high wind speed 6 m/s
 
 //used to store current protection state
 bool isGridProtectModeOn = false;
@@ -37,7 +21,7 @@ double anemVoltage = 0.; //anemometr voltage
 
 void setup() {
   //delay(5000); //to read while update
-  Serial.begin(9600);
+  // Serial.begin(9600);
 
   pinMode(ANEMOMETR_SIGNAL_PIN, INPUT);
   pinMode(GRID_STATE_SIGNAL_PIN, INPUT);
@@ -52,16 +36,16 @@ void setup() {
 
 void initRtc() {
   if (!rtc.begin()) {
-    lcdService->print("ERROR! Cannot find RTC");
+    lcdService->print(F("ERROR! Cannot find RTC"));
     goToProtectMode();
-    lcdService->print("ERROR! Cannot find RTC");
+    lcdService->print(F("ERROR! Cannot find RTC"));
     abort();
   }
 
   if (rtc.lostPower()) {
-    lcdService->print("ERROR! RTC lost power");
+    lcdService->print(F("ERROR! RTC lost power"));
     goToProtectMode();
-    lcdService->print("ERROR! RTC lost power");
+    lcdService->print(F("ERROR! RTC lost power"));
     abort();
   }
 }
@@ -86,7 +70,14 @@ void loop() {
   if(!isGridProtectModeOn){ // do not care about wind if grid is out
     windSpeedProtection();
   }
-  lcdService->printMonitoring(false, isGridProtectModeOn, isWindProtectModeOn, anemVoltage, VOLT_TO_METER_PER_SEC, getWindHighSpeedDuration(), MINUTES_SUN_POSITION_INTERVAL_CHECK, sun.getSolarAzimuth(), sun.getSolarElevation(), rtc.now());
+  if (isGridProtectModeOn) {
+    lcdService->printGridProtect();
+  } else if (isWindProtectModeOn) {
+    lcdService->printWindProtection(anemVoltage, getWindHighSpeedDuration());
+  } else {
+    lcdService->printNormal(anemVoltage,
+      sun.getSolarAzimuth(), sun.getSolarElevation(), rtc.now());
+  }
   delay(250);
 }
 
@@ -98,7 +89,7 @@ void sleepIfNight(){
     bool isSleeping = true;
     //sleeping loop
     do{
-      lcdService->printMonitoring(isSleeping, isGridProtectModeOn, isWindProtectModeOn, anemVoltage, VOLT_TO_METER_PER_SEC, getWindHighSpeedDuration(), MINUTES_SUN_POSITION_INTERVAL_CHECK, sun.getSolarAzimuth(), sun.getSolarElevation(), rtc.now());
+      lcdService->printSleeping(MINUTES_SUN_POSITION_INTERVAL_CHECK);
       sleepMinutesPowerSave(MINUTES_SUN_POSITION_INTERVAL_CHECK); //3 mins to sleep
       sunElevation = sun.getSolarElevation();
     } while(sunElevation <= SUN_SLEEP_ELEVATION);
@@ -137,8 +128,8 @@ void gridOutageProtection(){
 
 void windSpeedProtection(){
   anemVoltage = analogRead(ANEMOMETR_SIGNAL_PIN) * TO_ANEM_VOLTAGE;  // read the input pin
-  Serial.print("Anemometr anemVoltage: ");
-  Serial.println(anemVoltage);
+  // Serial.print("Anemometr anemVoltage: ");
+  // Serial.println(anemVoltage);
 
   if(anemVoltage >= ANEM_VOLTAGE_HIGH) {
     lastTimeWindHighSpeed = getUnixtimeFromRtc();
@@ -155,24 +146,24 @@ void windSpeedProtection(){
 }
 
 void goToProtectMode() {
-  Serial.println("Go to protect mode");
-  lcdService->printNoDelay("Go to protect mode");
+  // Serial.println("Go to protect mode");
+  lcdService->printWithDelay("Go to protect mode", 3000);
   turnTrackersOff();
   delay(10000); //10 sec wait till power blocks for trackers turn off completelly
 
   turnTrackersOn();
-  Serial.println("Wait trackers to get a protect position");
-  lcdService->printNoDelay("Wait trackers to get a protect position");
+  // Serial.println("Wait trackers to get a protect position");
+  lcdService->printWithDelay("Wait trackers to get a protect position", 3000);
   delay(MILLIS_TRACKER_TO_PROTECT_MODE); //300 sec //5 mins to get the waiting position
 
   turnTrackersOff();
-  Serial.print("Waiting for the better weather");
+  // Serial.print("Waiting for the better weather");
   lcdService->print("Waiting for the better weather");
 }
 
 void goToNormalMode(){
   turnTrackersOn();
-  Serial.println("Go to normal mode");
+  // Serial.println("Go to normal mode");
   lcdService->print("Go to normal mode");
 }
 
