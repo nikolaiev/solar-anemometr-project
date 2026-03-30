@@ -13,6 +13,13 @@ void LcdService::clear() {
   _lcd->clear();
 }
 
+void LcdService::printInLine(String message, short line) {
+  _lcd->setCursor(0, line);
+  _lcd->print(F("                    ")); // 20 spaces — clears the line
+  _lcd->setCursor(0, line);
+  _lcd->print(message);
+}
+
 void LcdService::print(String message) {
   _lcd->clear();
   _lcd->setCursor(0, 0);
@@ -26,7 +33,7 @@ void LcdService::printWithDelay(String message, int delayMs) {
   delay(delayMs);
 }
 
-void LcdService::printGridProtect() {
+void LcdService::printTrackerSystemGridProtectState() {
   _lcd->clear();
   _lcd->setCursor(0, 0);
   _lcd->print("Grid protection mode");
@@ -41,11 +48,11 @@ void LcdService::printSleeping(int minutesSunInterval) {
   _lcd->print(" min");
 }
 
-void LcdService::printWindProtection(double anemVoltage, long windHighSpeedDuration) {
+void LcdService::printTrackerSystemWindProtectState(double windSpeedMs, long windHighSpeedDuration) {
   _lcd->clear();
   _lcd->setCursor(0, 0);
   _lcd->print("Wind speed: ");
-  _lcd->print(anemVoltage / VOLT_TO_METER_PER_SEC);
+  _lcd->print(windSpeedMs);
   _lcd->print(" m/s ");
   _lcd->setCursor(0, 1);
   _lcd->print("Wind protection mode");
@@ -55,15 +62,15 @@ void LcdService::printWindProtection(double anemVoltage, long windHighSpeedDurat
   _lcd->print(windHighSpeedDuration);
 }
 
-void LcdService::printNormal(double anemVoltage, double solarAzimuth, double solarElevation, DateTime now) {
+void LcdService::printTrackerSystemNormalState(double windSpeedMs, double solarAzimuth, double solarElevation, DateTime now) {
   _lcd->clear();
   _lcd->setCursor(0, 0);
   _lcd->print("Wind speed: ");
-  _lcd->print(anemVoltage / VOLT_TO_METER_PER_SEC);
+  _lcd->print(windSpeedMs);
   _lcd->print(" m/s ");
   _lcd->setCursor(0, 1);
   _lcd->print("Anem signal: ");
-  _lcd->print(anemVoltage);
+  _lcd->print(windSpeedMs * VOLT_TO_METER_PER_SEC);
   _lcd->print(" v");
   _lcd->setCursor(0, 2);
   _lcd->print("az: ");

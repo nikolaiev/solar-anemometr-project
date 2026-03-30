@@ -10,10 +10,11 @@ class LcdService {
     LcdService(LiquidCrystal_I2C* lcd);
     void print(String message);
     void printWithDelay(String message, int delayMs);
-    void printGridProtect();
+    void printTrackerSystemGridProtectState();
     void printSleeping(int minutesSunInterval);
-    void printWindProtection(double anemVoltage, long windHighSpeedDuration);
-    void printNormal(double anemVoltage, double solarAzimuth, double solarElevation, DateTime now);
+    void printTrackerSystemWindProtectState(double windSpeedMs, long windHighSpeedDuration);
+    void printTrackerSystemNormalState(double windSpeedMs, double solarAzimuth, double solarElevation, DateTime now);
+    void printInLine(String message, short line);
     void clear();
   private:
     LiquidCrystal_I2C* _lcd;
