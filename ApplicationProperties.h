@@ -48,7 +48,7 @@
 
 // EEPROM configuration
 #define INIT_ADDR  1023  // reserved cell — holds first-run key
-#define INIT_KEY   50    // first-run key (0-254, unsigned char)
+#define INIT_KEY   49    // first-run key (0-254, unsigned char)
 
 #define ANEM_WIND_SPEED_HIGH_ADDRESS        0  // 4 bytes (float, m/s)
 #define ANEM_WIND_SPEED_MAX_ADDRESS         4  // 4 bytes (float, m/s)

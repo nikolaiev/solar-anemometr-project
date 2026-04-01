@@ -10,7 +10,8 @@
 
 RTC_DS3231 rtc;
 SolarPosition sun (LATITUDE, LONGITUDE);
-LiquidCrystal_I2C lcd (DISPLAY_I2C_ADDR, DISPLAY_COLS, DISPLAY_ROWS);
+LiquidCrystal_I2C lcd (DISPLAY_I2C_ADDR, DISPLAY_COLS, DISPLAY_ROWS); //20*4
+//LiquidCrystal_I2C lcd (0x27,DISPLAY_COLS,DISPLAY_ROWS); //16*2
 
 LcdService* lcdService;
 IrRemoteConfig* irRemoteConfig;
@@ -72,8 +73,10 @@ void initRtc() {
 
   if (rtc.lostPower()) {
     lcdService->printWithDelay(F("ERROR! RTC lost power"), 3000);
+    //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    //rtc.adjust(DateTime(2026, 4, 1, 23, 0, 0));
     trackerSystemService->goToProtectMode();
-    lcdService->printWithDelay(F("ERROR! RTC lost power"), 3000);
+    //lcdService->printWithDelay(F("ERROR! RTC lost power"), 3000);
     irRemoteConfig->setRtcTime();
   }
 }
