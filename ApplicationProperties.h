@@ -23,13 +23,13 @@
 #define VOLT_TO_METER_PER_SEC (5.0 / 30.0)             //0.166666666666..
 
 // Timing / behaviour
-#define MILLIS_TRACKER_TO_PROTECT_MODE      300000L   //300 secs 5 mins
+#define MILLIS_TRACKER_TO_PROTECT_MODE      420000L   //300 secs 7 mins
 #define MINUTES_SUN_POSITION_INTERVAL_CHECK 3         //180 secs 3 mins
 #define SUN_SLEEP_ELEVATION                 -1.0
 
 // IR remote
-#define IR_RECEIVE_PIN  2 // Digital pin. Not intercepted with POWER_CONTROLE_PIN_2 A2.
-
+#define  IR_RECEIVE_PIN  2 // Digital pin. Not intercepted with POWER_CONTROLE_PIN_2 A2.
+ 
 #define BTN_1           0x45
 #define BTN_2           0x46
 #define BTN_3           0x47
