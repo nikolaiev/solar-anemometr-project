@@ -43,7 +43,7 @@ void TrackerSystemService::checkWindSpeedAndGoToProtectModeIfNeeded(unsigned lon
   if (_anemVoltage >= _anemVoltageMax && !_isWindProtectModeOn) {
     goToProtectMode();
     _isWindProtectModeOn = true;
-    _lastTimeWindHighSpeed = nowUnix;
+    _lastTimeWindHighSpeed = nowUnix + (MILLIS_TRACKER_TO_PROTECT_MODE / 1000UL); //assume we've just hit the delay
   } else if (_isWindProtectModeOn && _anemVoltage <= _anemVoltageHigh
              && (nowUnix - _lastTimeWindHighSpeed) > (unsigned long)_secondsToWaitWindCalm) {
     goToNormalMode();
